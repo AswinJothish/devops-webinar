@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevOps Todo App - Professional Demo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash-message flash-{{ category }}">
+                            <svg class="flash-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                {% if category == 'success' %}
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                {% else %}
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                {% endif %}
+                            </svg>
+                            <span>{{ message }}</span>
+                            <button onclick="this.parentElement.remove()" class="flash-close">&times;</button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <header class="header">
+            <h1>
+                <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 11l3 3L22 4"></path>
+                    <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+                </svg>
+                DevOps Todo App
+            </h1>
+            <p class="subtitle">Professional Task Management with Image Attachments</p>
+        </header>
+
+        <!-- Statistics Dashboard -->
+        <div class="stats">
+            <div class="stat-card">
+                <span class="stat-number">{{ stats.total }}</span>
+                <span class="stat-label">Total Tasks</span>
+            </div>
+            <div class="stat-card stat-success">
+                <span class="stat-number">{{ stats.completed }}</span>
+                <span class="stat-label">Completed</span>
+            </div>
+            <div class="stat-card stat-warning">
+                <span class="stat-number">{{ stats.pending }}</span>
+                <span class="stat-label">Pending</span>
+            </div>
+            <div class="stat-card stat-danger">
+                <span class="stat-number">{{ stats.high_priority }}</span>
+                <span class="stat-label">High Priority</span>
+            </div>
+            <div class="stat-card stat-info">
+                <span class="stat-number">{{ stats.categories }}</span>
+                <span class="stat-label">Categories</span>
+            </div>
+        </div>
+
+        <!-- Add Task Form -->
+        <form method="POST" enctype="multipart/form-data" class="todo-form" id="addTaskForm">
+            <div class="form-group">
+                <input 
+                    type="text" 
+                    name="todo" 
+                    placeholder="What needs to be done?" 
+                    required 
+                    autocomplete="off"
+                    class="todo-input"
+                >
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <select name="priority" class="form-select">
+                        <option value="low">🟢 Low Priority</option>
+                        <option value="medium" selected>🟡 Medium Priority</option>
+                        <option value="high">🔴 High Priority</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <select name="category" class="form-select">
+                        <option value="general">📋 General</option>
+                        <option value="work">💼 Work</option>
+                        <option value="personal">👤 Personal</option>
+                        <option value="shopping">🛒 Shopping</option>
+                        <option value="health">❤️ Health</option>
+                        <option value="learning">📚 Learning</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="file-upload-wrapper">
+                    <input 
+                        type="file" 
+                        name="image" 
+                        id="imageUpload" 
+                        accept="image/*"
+                        class="file-input"
+                    >
+                    <label for="imageUpload" class="file-label">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                        </svg>
+                        <span id="fileName">Attach Image (optional)</span>
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-large">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add Task
+            </button>
+        </form>
+
+        <!-- Filters -->
+        {% if all_todos %}
+        <div class="filters-section">
+            <h3 class="filters-title">Filters</h3>
+            <div class="filters">
+                <div class="filter-group">
+                    <label>Status:</label>
+                    <a href="{{ url_for('index', priority=filter_priority, category=filter_category, status='all') }}" 
+                       class="filter-btn {% if filter_status == 'all' %}active{% endif %}">All</a>
+                    <a href="{{ url_for('index', priority=filter_priority, category=filter_category, status='pending') }}" 
+                       class="filter-btn {% if filter_status == 'pending' %}active{% endif %}">Pending</a>
+                    <a href="{{ url_for('index', priority=filter_priority, category=filter_category, status='completed') }}" 
+                       class="filter-btn {% if filter_status == 'completed' %}active{% endif %}">Completed</a>
+                </div>
+
+                <div class="filter-group">
+                    <label>Priority:</label>
+                    <a href="{{ url_for('index', priority='all', category=filter_category, status=filter_status) }}" 
+                       class="filter-btn {% if filter_priority == 'all' %}active{% endif %}">All</a>
+                    <a href="{{ url_for('index', priority='low', category=filter_category, status=filter_status) }}" 
+                       class="filter-btn {% if filter_priority == 'low' %}active{% endif %}">Low</a>
+                    <a href="{{ url_for('index', priority='medium', category=filter_category, status=filter_status) }}" 
+                       class="filter-btn {% if filter_priority == 'medium' %}active{% endif %}">Medium</a>
+                    <a href="{{ url_for('index', priority='high', category=filter_category, status=filter_status) }}" 
+                       class="filter-btn {% if filter_priority == 'high' %}active{% endif %}">High</a>
+                </div>
+
+                <div class="filter-group">
+                    <label>Category:</label>
+                    <a href="{{ url_for('index', priority=filter_priority, category='all', status=filter_status) }}" 
+                       class="filter-btn {% if filter_category == 'all' %}active{% endif %}">All</a>
+                    <a href="{{ url_for('index', priority=filter_priority, category='work', status=filter_status) }}" 
+                       class="filter-btn {% if filter_category == 'work' %}active{% endif %}">Work</a>
+                    <a href="{{ url_for('index', priority=filter_priority, category='personal', status=filter_status) }}" 
+                       class="filter-btn {% if filter_category == 'personal' %}active{% endif %}">Personal</a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Action Bar -->
+        {% if todos %}
+        <div class="actions-bar">
+            <span class="task-count">
+                Showing {{ todos|length }} of {{ all_todos|length }} task{{ 's' if all_todos|length != 1 else '' }}
+            </span>
+            <a href="{{ url_for('clear') }}" class="btn btn-danger btn-small" onclick="return confirm('⚠️ This will delete all tasks and images. Are you sure?')">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path>
+                </svg>
+                Clear All
+            </a>
+        </div>
+
+        <!-- Todo List -->
+        <ul class="todo-list">
+            {% for todo in todos %}
+            <li class="todo-item {{ 'completed' if todo.completed else '' }} priority-{{ todo.priority }}">
+                <div class="todo-main">
+                    <a href="{{ url_for('toggle', todo_id=todo.id) }}" class="checkbox">
+                        {% if todo.completed %}
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        {% endif %}
+                    </a>
+                    
+                    <div class="todo-content">
+                        <div class="todo-header">
+                            <span class="todo-title">{{ todo.text }}</span>
+                            <div class="todo-badges">
+                                <span class="badge badge-{{ todo.priority }}">
+                                    {% if todo.priority == 'high' %}🔴{% elif todo.priority == 'medium' %}🟡{% else %}🟢{% endif %}
+                                    {{ todo.priority|capitalize }}
+                                </span>
+                                <span class="badge badge-category">{{ todo.category|capitalize }}</span>
+                            </div>
+                        </div>
+                        
+                        {% if todo.image %}
+                        <div class="todo-image-container">
+                            <img src="{{ url_for('static', filename='uploads/' + todo.image) }}" 
+                                 alt="Task attachment" 
+                                 class="todo-image"
+                                 onclick="openImageModal(this.src)">
+                            <button onclick="confirmDeleteImage({{ todo.id }})" class="btn-delete-image" title="Remove image">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="todo-meta">
+                            <span class="todo-date">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12 6 12 12 16 14"></polyline>
+                                </svg>
+                                {{ todo.created_at }}
+                            </span>
+                            {% if todo.updated_at %}
+                            <span class="todo-updated">Updated: {{ todo.updated_at }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="todo-actions">
+                    <a href="{{ url_for('edit', todo_id=todo.id) }}" class="btn-action btn-edit" title="Edit task">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </a>
+                    <a href="{{ url_for('delete', todo_id=todo.id) }}" 
+                       onclick="return confirm('Delete this task?')" 
+                       class="btn-action btn-delete" 
+                       title="Delete task">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path>
+                        </svg>
+                    </a>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <!-- Empty State -->
+        <div class="empty-state">
+            <svg class="empty-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 11l3 3L22 4"></path>
+                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+            </svg>
+            <h3>No tasks found</h3>
+            <p>{% if filter_status != 'all' or filter_priority != 'all' or filter_category != 'all' %}
+                Try adjusting your filters or <a href="{{ url_for('index') }}">clear all filters</a>
+                {% else %}
+                Add your first task to get started!
+                {% endif %}
+            </p>
+        </div>
+        {% endif %}
+
+        <!-- Image Modal -->
+        <div id="imageModal" class="modal" onclick="closeImageModal()">
+            <span class="modal-close">&times;</span>
+            <img class="modal-content" id="modalImage">
+        </div>
+
+        <footer class="footer">
+            <p>🚀 DevOps Webinar Demo | Built with Flask, Python & Modern CSS</p>
+            <p class="endpoint-info">
+                Health Check: <code>/health</code> | 
+                Max Upload: <code>5MB</code> | 
+                Formats: <code>PNG, JPG, GIF, WebP</code>
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        // File input display
+        document.getElementById('imageUpload').addEventListener('change', function(e) {
+            const fileName = e.target.files[0]?.name || 'Attach Image (optional)';
+            document.getElementById('fileName').textContent = fileName;
+        });
+
+        // Image modal
+        function openImageModal(src) {
+            document.getElementById('imageModal').style.display = 'flex';
+            document.getElementById('modalImage').src = src;
+        }
+
+        function closeImageModal() {
+            document.getElementById('imageModal').style.display = 'none';
+        }
+
+        function confirmDeleteImage(todoId) {
+            if (confirm('Remove this image from the task?')) {
+                window.location.href = `/delete-image/${todoId}`;
+            }
+        }
+
+        // Auto-hide flash messages
+        setTimeout(() => {
+            document.querySelectorAll('.flash-message').forEach(msg => {
+                msg.style.animation = 'slideOut 0.3s ease-out';
+                setTimeout(() => msg.remove(), 300);
+            });
+        }, 5000);
+    </script>
+</body>
+</html>
